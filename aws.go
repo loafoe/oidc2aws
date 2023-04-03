@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -95,6 +96,7 @@ type signinToken struct {
 
 // https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
 func fetchSigninToken(result *result) error {
+	ctx := context.Background()
 
 	sessionData := signinSession{
 		SessionId:    *result.Credentials.AccessKeyId,
@@ -132,7 +134,7 @@ func fetchSigninToken(result *result) error {
 		token.SigninToken,
 	)
 
-	if err := openInBrowser(loginUrl); err != nil {
+	if err := openInBrowser(ctx, loginUrl); err != nil {
 		return err
 	}
 

@@ -30,13 +30,13 @@ type idTokenMessage struct { // One of (either)...
 	err    error         // an error
 }
 
-func openInBrowser(url string) error {
-	cmd := exec.Command("open", url)
+func openInBrowser(ctx context.Context, url string) error {
+	cmd := exec.CommandContext(ctx, "open", url)
 	return errors.Wrap(cmd.Run(), "error opening page in browser")
 }
 
 func fetchIDToken(oc oidcConfig) (*idTokenResult, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	provider, err := oidc.NewProvider(ctx, oc.Provider)
 	if err != nil {
@@ -76,18 +76,24 @@ func fetchIDToken(oc oidcConfig) (*idTokenResult, error) {
 		// browser window after authentication :(
 		// oauth2.SetAuthURLParam("prompt", "consent")
 	)
+	requestSignal := make(chan idTokenMessage)
+	serverSignal := make(chan idTokenMessage)
 
-	if err := openInBrowser(url); err != nil {
-		return nil, err
-	}
+	// On Linux this stays in the foreground!
+	browserDone := false
+	go func() {
+		if err := openInBrowser(ctx, url); err != nil {
+			requestSignal <- idTokenMessage{
+				err: err,
+			}
+		}
+		browserDone = true
+	}()
 
 	server := http.Server{
 		Addr: ":9999",
 	}
 	server.SetKeepAlivesEnabled(false)
-
-	requestSignal := make(chan idTokenMessage)
-	serverSignal := make(chan idTokenMessage)
 
 	server.Handler = handleOAuth2Callback(provider, oauth2Config, state, requestSignal)
 
@@ -106,6 +112,10 @@ func fetchIDToken(oc oidcConfig) (*idTokenResult, error) {
 	}()
 
 	err = server.ListenAndServe()
+
+	if !browserDone {
+		cancel()
+	}
 
 	if err != nil && err != http.ErrServerClosed {
 		return nil, errors.Wrap(err, "error from server.ListenAndServe")
@@ -188,7 +198,7 @@ func handleOAuth2Callback(provider *oidc.Provider, oauth2Config oauth2.Config, s
 		}
 
 		// Close the browser window
-		writeString(w, "<script>window.close()</script>")
+		writeString(w, "You may close this window now\n<script>window.close()</script>")
 	}
 }
 

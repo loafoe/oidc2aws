@@ -1,4 +1,4 @@
-module github.com/theplant/oidc2aws
+module github.com/loafoe/oidc2aws
 
 go 1.19
 
