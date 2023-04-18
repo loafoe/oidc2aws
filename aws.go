@@ -135,7 +135,7 @@ func fetchSigninToken(result *result) error {
 	)
 
 	if err := openInBrowser(ctx, loginUrl); err != nil {
-		return err
+		return fmt.Errorf("erorr opening URL in browser: %w", err)
 	}
 
 	return nil

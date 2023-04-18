@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/aws/aws-sdk-go v1.44.190
 	github.com/coreos/go-oidc v2.0.0+incompatible
+	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
 	golang.org/x/oauth2 v0.0.0-20181106182150-f42d05182288
 )
@@ -17,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.8.1 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	google.golang.org/appengine v1.3.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.1.9 // indirect
 )
