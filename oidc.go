@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/pkg/browser"
 	"net/http"
-	"os/exec"
 	"time"
 
 	"github.com/coreos/go-oidc"
@@ -31,8 +31,7 @@ type idTokenMessage struct { // One of (either)...
 }
 
 func openInBrowser(ctx context.Context, url string) error {
-	cmd := exec.CommandContext(ctx, "open", url)
-	return errors.Wrap(cmd.Run(), "error opening page in browser")
+	return browser.OpenURL(url)
 }
 
 func fetchIDToken(oc oidcConfig) (*idTokenResult, error) {
