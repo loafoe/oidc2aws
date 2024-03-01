@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -40,6 +39,8 @@ var sourceRole = flag.String("sourcerole", "", "source role to assume before ass
 
 var aliasFlag = flag.String("alias", "", "alias configured in ~/.oidc2aws/oidcconfig")
 
+var shell = flag.String("shell", "", "shell type, possible values: bash, zsh, sh, fish, csh, tcsh")
+
 func arnFilename(arn string) string {
 	arn = strings.Replace(arn, "/", "-", -1)
 	arn = strings.Replace(arn, ":", "-", -1)
@@ -48,9 +49,37 @@ func arnFilename(arn string) string {
 
 func printCredentials(result *result) error {
 	if *envFormat {
-		fmt.Printf("export AWS_ACCESS_KEY_ID=%s\n", *result.Credentials.AccessKeyId)
-		fmt.Printf("export AWS_SECRET_ACCESS_KEY=%s\n", *result.Credentials.SecretAccessKey)
-		fmt.Printf("export AWS_SESSION_TOKEN=%s\n", *result.Credentials.SessionToken)
+		// Get the name of current user's default shell
+		default_shell := os.Getenv("SHELL")
+
+		current_shell := path.Base(default_shell)
+
+		// If the user has specified a shell, use that instead
+		if *shell != "" {
+			current_shell = *shell
+		}
+
+		// Check the shell type and print the appropriate command to export the variable
+		switch current_shell {
+		case "fish":
+			// For fish, use the set command
+			fmt.Printf("set -x AWS_ACCESS_KEY_ID %s\n", *result.Credentials.AccessKeyId)
+			fmt.Printf("set -x AWS_SECRET_ACCESS_KEY %s\n", *result.Credentials.SecretAccessKey)
+			fmt.Printf("set -x AWS_SESSION_TOKEN %s\n", *result.Credentials.SessionToken)
+		case "csh", "tcsh":
+			// For csh and tcsh, use the setenv command
+			fmt.Printf("setenv AWS_ACCESS_KEY_ID %s\n", *result.Credentials.AccessKeyId)
+			fmt.Printf("setenv AWS_SECRET_ACCESS_KEY %s\n", *result.Credentials.SecretAccessKey)
+			fmt.Printf("setenv AWS_SESSION_TOKEN %s\n", *result.Credentials.SessionToken)
+		case "bash", "zsh", "sh":
+			fallthrough
+		default:
+			// For bash, zsh, sh and any other shell, use the export command
+			fmt.Printf("export AWS_ACCESS_KEY_ID=%s\n", *result.Credentials.AccessKeyId)
+			fmt.Printf("export AWS_SECRET_ACCESS_KEY=%s\n", *result.Credentials.SecretAccessKey)
+			fmt.Printf("export AWS_SESSION_TOKEN=%s\n", *result.Credentials.SessionToken)
+		}
+
 		return nil
 	} else if *loginFormat {
 		return fetchSigninToken(result)
@@ -257,7 +286,7 @@ func put(key string, val interface{}) error {
 		return errors.Wrap(err, "error serialising credentials to json")
 	}
 
-	err = ioutil.WriteFile(arnFilename(key), bytes, 0600)
+	err = os.WriteFile(arnFilename(key), bytes, 0600)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error writing credentials to file %q", key))
 	}
@@ -269,7 +298,7 @@ var errNotFound = errors.New("no value for key")
 
 func get(key string, val interface{}) error {
 	debugf("fetching cached credentials for %s...", key)
-	data, err := ioutil.ReadFile(arnFilename(key))
+	data, err := os.ReadFile(arnFilename(key))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return errNotFound
